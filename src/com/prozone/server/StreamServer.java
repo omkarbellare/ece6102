@@ -166,7 +166,7 @@ public class StreamServer {
 				writer = ToolFactory.makeWriter(repo + "movie"+ readIndex + ".mp4");
 				writer.addVideoStream(0, 0, ICodec.ID.CODEC_ID_MPEG4,
 						screenBounds.width/2, screenBounds.height/2);
-				writer.addAudioStream(1, 0, 1, 44100);
+				writer.addAudioStream(1, 0, 1, (int)audioFormat.getSampleRate());
 
 				int i=0;
 				while(i < 100){
