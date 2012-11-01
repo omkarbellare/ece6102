@@ -73,12 +73,12 @@ public class StreamServer {
 	private class StreamWriter implements Runnable{
 
 		private MediaPlayerFactory factory;
-		private HeadlessMediaPlayer player;
+		private EmbeddedMediaPlayer player;
 		private String[] mediaOptions;
 
 		public StreamWriter(String[] mediaOptions){
-			factory= new MediaPlayerFactory();
-			player = factory.newHeadlessMediaPlayer();
+			factory = new MediaPlayerFactory();
+			player = factory.newEmbeddedMediaPlayer();
 			this.mediaOptions = mediaOptions;
 		}
 
@@ -87,9 +87,10 @@ public class StreamServer {
 			int read = 0;
 			int i;
 			while(true){
-				System.out.println(StreamServer.class.toString());
+				
+				
 				synchronized (StreamServer.class) {
-					read= readIndex;
+					read = readIndex;
 					i = writeIndex;
 					if(read - i < 2){
 						try {
@@ -101,6 +102,7 @@ public class StreamServer {
 					}
 
 				}
+
 				for(; i < readIndex;i++){
 					String inFileUrl = repo + "pandit"+ i+ ".mp4";
 					System.out.println("Playing movie:"+inFileUrl);
@@ -140,6 +142,7 @@ public class StreamServer {
 		private IMediaWriter writer;
 		private Dimension screenBounds;
 		private DatagramPacket dataPacket;
+
 		private TargetDataLine line;
 		AudioFormat audioFormat;
 		
@@ -195,6 +198,7 @@ public class StreamServer {
 			socket = new DatagramSocket(STREAMIN_PORT, this.inetAddress);
 			socket.setSoTimeout(0); // blocking read
 
+
 			this.constructURL();
 			mediaOptions[0] = url;
 
@@ -206,6 +210,7 @@ public class StreamServer {
 	public void startServer(){
 		streamWriter  = this.new StreamWriter(mediaOptions);
 		streamReader = this.new StreamReader();
+		
 		new Thread(streamReader).start();
 		new Thread(streamWriter).start();
 	}
