@@ -1,6 +1,7 @@
 package com.prozone.proxy;
 
 import java.io.BufferedReader;
+
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
@@ -8,7 +9,15 @@ import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLEncoder;
+import java.util.ArrayList;
 import java.util.List;
+
+import org.apache.http.HttpResponse;
+import org.apache.http.client.entity.UrlEncodedFormEntity;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.impl.client.DefaultHttpClient;
+import org.apache.http.message.BasicNameValuePair;
+import org.omg.CORBA.NameValuePair;
 
 /**
  * 
@@ -19,6 +28,8 @@ public class HeartbeatHandler implements Runnable {
 
 	private int interval;
 	private int server_port;
+	private final int FAILURE_COUNT=3;
+	private final int SEND_DEVICES_COUNT=3;
 	
 	public HeartbeatHandler(int interval, int server_port) {
 		
@@ -29,28 +40,21 @@ public class HeartbeatHandler implements Runnable {
 	private void sendDevicesListToPrimary() throws MalformedURLException {
 		
 		try {
-			HttpURLConnection conn;
+			
+			DefaultHttpClient httpClient=new DefaultHttpClient();
 			URL url=new URL("http://"+StreamingProxyServer.getPrimaryServer()+":"+server_port+"/deviceList");
+			HttpPost post=new HttpPost(url.toString());
 			String devicesList="";
 			List<String> devices=StreamingProxyServer.getStreamingDevicesList();
 			if(devices!=null && devices.size()>0) {
+				List<BasicNameValuePair> list=new ArrayList<BasicNameValuePair>();
 				for(int i=0;i<devices.size();i++) {
-					//For each device add a key-value pair
-					if(i!=0)
-						devicesList+="&";
-					devicesList+=URLEncoder.encode(String.valueOf(i), "UTF-8");
-					devicesList+="=";
-					devicesList+=URLEncoder.encode(devices.get(i), "UTF-8");
+					
+					list.add(new BasicNameValuePair(String.valueOf(i),devices.get(i)));
 				}
+				post.setEntity(new UrlEncodedFormEntity(list));
+				httpClient.execute(post);
 				System.out.println("Going to send:"+devicesList);
-				conn=(HttpURLConnection)url.openConnection();
-				conn.setRequestMethod("POST");
-				conn.setDoInput(false);
-				conn.setDoOutput(true);
-				OutputStreamWriter out=new OutputStreamWriter(conn.getOutputStream());
-				out.write(devicesList);
-				out.flush();
-				out.close();
 			}
 		} catch (IOException e) {
 			System.out.println("Error in sending state info to the new primary server.");
@@ -61,6 +65,7 @@ public class HeartbeatHandler implements Runnable {
 		
 		try {
 			int failedCount=0;
+			int successCount=0;
 			while(true) {
 				
 				String primaryServer=StreamingProxyServer.getPrimaryServer();
@@ -78,13 +83,19 @@ public class HeartbeatHandler implements Runnable {
 						}
 						else {
 							failedCount=0;
+							successCount++;
+							//Send the devices list after a few successful heartbeats
+							if(successCount==SEND_DEVICES_COUNT) {
+								sendDevicesListToPrimary();
+								successCount=0;
+							}
 						}
 					} catch (IOException e) {
 						System.out.println("Could not connect with server : "+primaryServer);
 						failedCount++;
 					} finally {
 
-						if(failedCount==3) {
+						if(failedCount==FAILURE_COUNT) {
 							
 							System.out.println("Primary server down...");
 							StreamingProxyServer.getStreamingServersList().remove(primaryServer);
@@ -96,6 +107,7 @@ public class HeartbeatHandler implements Runnable {
 								sendDevicesListToPrimary();
 							}
 							failedCount=0;
+							successCount=0;
 						}
 					}
 				}

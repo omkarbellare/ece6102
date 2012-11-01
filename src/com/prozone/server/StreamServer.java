@@ -2,10 +2,7 @@ package com.prozone.server;
 
 
 import java.awt.Dimension;
-import java.awt.Toolkit;
-import java.awt.image.BufferedImage;
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
+
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.Inet4Address;
@@ -15,32 +12,19 @@ import java.net.SocketException;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Enumeration;
-import java.util.concurrent.TimeUnit;
-
-import javax.imageio.ImageIO;
 import javax.sound.sampled.AudioFormat;
-import javax.sound.sampled.AudioSystem;
-import javax.sound.sampled.DataLine;
-import javax.sound.sampled.LineUnavailableException;
 import javax.sound.sampled.TargetDataLine;
+
+import com.xuggle.mediatool.IMediaWriter;
 
 import uk.co.caprica.vlcj.player.MediaPlayerFactory;
 import uk.co.caprica.vlcj.player.embedded.EmbeddedMediaPlayer;
-import uk.co.caprica.vlcj.player.headless.HeadlessMediaPlayer;
-
-import com.xuggle.ferry.IBuffer;
-import com.xuggle.mediatool.IMediaWriter;
-import com.xuggle.mediatool.ToolFactory;
-import com.xuggle.xuggler.IAudioSamples;
-import com.xuggle.xuggler.ICodec;
 
 public class StreamServer {
 
 	private DatagramSocket socket;
 	private static final int STREAMIN_PORT = 9998;
 	private static final int STREAMOUT_PORT = 5555;
-
-	private byte[] buf = new byte[2780800];
 
 	private String repo = "/home/neer/stream_files/";
 	private int writeIndex  = 0;
@@ -59,10 +43,7 @@ public class StreamServer {
 	private StreamWriter streamWriter;
 	private StreamReader streamReader;
 
-	//private boolean isData = false;
-
 	private void constructURL(){
-		//{sdp=rtsp://@192.168.1.12:5555/demo}
 		url = ":sout=#rtp{sdp=rtsp://@" + this.inetAddress.getHostAddress() + ":" + StreamServer.STREAMOUT_PORT+ "/demo,select=noaudio}";
 		System.out.println(url);
 	}
@@ -139,13 +120,6 @@ public class StreamServer {
 	 */
 	private class StreamReader implements Runnable{
 
-		private IMediaWriter writer;
-		private Dimension screenBounds;
-		private DatagramPacket dataPacket;
-
-		private TargetDataLine line;
-		AudioFormat audioFormat;
-		
 		private MediaPlayerFactory factory;
 		private EmbeddedMediaPlayer player;
 

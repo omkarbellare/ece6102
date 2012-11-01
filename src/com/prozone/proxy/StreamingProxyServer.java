@@ -78,6 +78,22 @@ public class StreamingProxyServer extends NanoHTTPD implements Runnable
 				return new NanoHTTPD.Response( HTTP_BADREQUEST, MIME_PLAINTEXT, "Bad Request" );
 			}
 		}
+		else if(uri.equals("/deregisterServer")) {
+			
+			if(parms.containsKey("ip") && ProxyHelper.isValidIP(parms.get("ip").toString())) {
+				synchronized (streamingServersList) {
+					
+					if(streamingServersList.contains(parms.get("ip").toString())) {
+						streamingServersList.remove(parms.get("ip").toString());
+					}
+				}
+				String msg="Total registered servers="+streamingServersList.size();
+				return new NanoHTTPD.Response( HTTP_OK, MIME_PLAINTEXT, msg );
+			}
+			else {
+				return new NanoHTTPD.Response( HTTP_BADREQUEST, MIME_PLAINTEXT, "Bad Request" );
+			}
+		}
 		else if(uri.equals("/registerDevice")) {
 			
 			if(parms.containsKey("ip") && ProxyHelper.isValidIP(parms.get("ip").toString())) {
@@ -85,6 +101,21 @@ public class StreamingProxyServer extends NanoHTTPD implements Runnable
 							
 					if(!streamingDevicesList.contains(parms.get("ip").toString()))
 						streamingDevicesList.add(parms.get("ip").toString());
+				}
+				String msg="Total registered devices="+streamingDevicesList.size();
+				return new NanoHTTPD.Response( HTTP_OK, MIME_PLAINTEXT, msg );
+			}
+			else {
+				return new NanoHTTPD.Response( HTTP_BADREQUEST, MIME_PLAINTEXT, "Bad Request" );
+			}
+		}
+		else if(uri.equals("/deregisterDevice")) {
+			
+			if(parms.containsKey("ip") && ProxyHelper.isValidIP(parms.get("ip").toString())) {
+				synchronized (streamingDevicesList) {
+							
+					if(streamingDevicesList.contains(parms.get("ip").toString()))
+						streamingDevicesList.remove(parms.get("ip").toString());
 				}
 				String msg="Total registered devices="+streamingDevicesList.size();
 				return new NanoHTTPD.Response( HTTP_OK, MIME_PLAINTEXT, msg );

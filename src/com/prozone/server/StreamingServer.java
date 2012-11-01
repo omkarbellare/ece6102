@@ -16,23 +16,40 @@ public class StreamingServer extends NanoHTTPD implements Runnable {
 	private String proxy_ip;
 	private int proxy_port;
 	private static List streamingDevicesList;
+	private static String primaryDevice;
 	
 	public StreamingServer(int port, String proxy_ip, int proxy_port) throws IOException {
 		super(port, new File("."));
 		this.proxy_ip=proxy_ip;
 		this.proxy_port=proxy_port;
 		streamingDevicesList=new ArrayList<String>();
+		primaryDevice="";
 	}
 
 	public Response serve( String uri, String method, Properties header, Properties parms, Properties files )
 	{
-		if(uri.equals("/heartbeat"))
+		if(uri.equals("/heartbeat")) {
+			if(primaryDevice.equals("") && streamingDevicesList!=null && streamingDevicesList.size()>0) {
+				primaryDevice=(String) streamingDevicesList.get(0);
+				System.out.println("New primary device is:"+primaryDevice);
+			}
 			return new NanoHTTPD.Response( HTTP_OK, MIME_PLAINTEXT, "Ok" );
+		}
 		else if(uri.equals("/deviceList")) {
 			
+			streamingDevicesList.clear();
 			for(Object key:parms.keySet()) {
-				
-				System.out.println(parms.get(key).toString());
+				streamingDevicesList.add(parms.get(key));
+				System.out.println("Device:"+parms.get(key));
+			}
+			//If the primary device was deregistered, elect a new primary
+			if(!streamingDevicesList.contains(primaryDevice) || primaryDevice.equals("")) {
+				if(streamingDevicesList.size()>0) {
+					primaryDevice=(String) streamingDevicesList.get(0);
+					System.out.println("New primary device is:"+primaryDevice);
+				}
+				else
+					primaryDevice="";
 			}
 			return new NanoHTTPD.Response( HTTP_OK, MIME_PLAINTEXT, "Ok" );
 		}
