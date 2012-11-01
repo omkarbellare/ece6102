@@ -25,6 +25,7 @@ import javax.sound.sampled.LineUnavailableException;
 import javax.sound.sampled.TargetDataLine;
 
 import uk.co.caprica.vlcj.player.MediaPlayerFactory;
+import uk.co.caprica.vlcj.player.embedded.EmbeddedMediaPlayer;
 import uk.co.caprica.vlcj.player.headless.HeadlessMediaPlayer;
 
 import com.xuggle.ferry.IBuffer;
@@ -100,8 +101,27 @@ public class StreamServer {
 					}
 
 				}
-				for(; i < read;i++)
-					player.playMedia(repo + "movie"+ i+ ".mp4",this.mediaOptions);
+				for(; i < readIndex;i++){
+					String inFileUrl = repo + "pandit"+ i+ ".mp4";
+					System.out.println("Playing movie:"+inFileUrl);
+					
+					player.playMedia(inFileUrl,url,":no-sout-rtp-sap", 
+							  ":no-sout-standard-sap", 
+							  ":sout-all", 
+							  ":sout-keep");
+					
+					try {
+						Thread.sleep(18000);
+						player.stop();
+					    //mediaPlayer.release();
+					} catch (InterruptedException e) {
+						System.out.println(e.getMessage());
+					}
+					player.stop();
+	
+					System.out.println("finish playing movie"+i+".mp4");
+				}
+				
 
 				synchronized (StreamServer.class) {
 					writeIndex = i;
@@ -122,110 +142,47 @@ public class StreamServer {
 		private DatagramPacket dataPacket;
 		private TargetDataLine line;
 		AudioFormat audioFormat;
+		
+		private MediaPlayerFactory factory;
+		private EmbeddedMediaPlayer player;
 
 		public StreamReader(){
-			screenBounds = Toolkit.getDefaultToolkit().getScreenSize();
-			dataPacket = new DatagramPacket(buf, buf.length);
-
-			//Adding lines for getting Audio line
-			audioFormat = getAudioFormat(); 
-			DataLine.Info info = new DataLine.Info(TargetDataLine.class, 
-					audioFormat); 
-			try { 
-				this.line = (TargetDataLine) AudioSystem.getLine(info); 
-				this.line.open(audioFormat); 
-			} 
-			catch (LineUnavailableException e) 
-			{ 
-				System.out.println("unable to get a recording line"); 
-				e.printStackTrace(); 
-				System.exit(1); 
-			} 
-		}
-
-		//Audio format gets returned. Need to modify this if audio stream not working correctly
-		private AudioFormat getAudioFormat(){ 
-			float sampleRate = 8000.0F; //8000,11025,16000,22050,44100 
-			int sampleSizeInBits = 16; 	//8,16 
-			int channels = 1; 			//1,2 
-			boolean signed = true;		//true,false 
-			boolean bigEndian = false;	//true,false
-			
-			return new AudioFormat(sampleRate, 
-					sampleSizeInBits, 
-					channels, 
-					signed, 
-					bigEndian); 
+			factory = new MediaPlayerFactory();
+		    player = factory.newEmbeddedMediaPlayer();			
 		}
 
 		@Override
 		public void run() {
-			//short[] audio = {1};
+			
 			while(true){
-				long startTime = System.nanoTime();
-				writer = ToolFactory.makeWriter(repo + "movie"+ readIndex + ".mp4");
-				writer.addVideoStream(0, 0, ICodec.ID.CODEC_ID_MPEG4,
-						screenBounds.width/2, screenBounds.height/2);
-				writer.addAudioStream(1, 0, 1, (int)audioFormat.getSampleRate());
-
-				int i=0;
-				while(i < 100){
-
-					try {
-						System.out.println("StreamReader waiting for packet data");
-						socket.receive(dataPacket);
-						ByteArrayInputStream stream = new ByteArrayInputStream(dataPacket.getData());
-						BufferedImage image = ImageIO.read(stream);
-						i++;
-
-						writer.encodeVideo(0, image, System.nanoTime() - startTime,
-								TimeUnit.NANOSECONDS);
-						//writer.encodeAudio(0, audio);
-						
-						System.out.println("Packet length"+ dataPacket.getLength());
-						System.out.println("Sender:"+ dataPacket.getAddress().getHostAddress());
-						
-						// Add audio stream 
-		                writer.addAudioStream(1, 0,1,(int) audioFormat.getSampleRate()); 
-		                
-		                // audio buffer 
-		                int numBytesToRead=192000; 
-		                byte[] audioBuf = new byte[numBytesToRead]; 
-		                
-		                int nBytesRead = this.line.read(audioBuf, 0, this.line.available()); 
-		                
-		                System.out.println("Read " + nBytesRead+"  bytes of sound"); 
-                        if(nBytesRead==0) 
-                                continue; 
-                        
-                        // encode audio to stream #1 
-                        IBuffer iBuf = IBuffer.make(null, audioBuf, 0, nBytesRead); 
-                        
-                        IAudioSamples smp = IAudioSamples.make(iBuf, 1,IAudioSamples.Format.FMT_S16); 
-                        
-                        if(smp==null) 
-                            continue; 
-                        
-                        long numSample =nBytesRead/smp.getSampleSize();
-                        
-                        System.out.println("NUM SAMPLE "+numSample+" SMP size "+smp.getSampleSize()); 
-                        
-                        smp.setComplete(true, numSample,(int) audioFormat.getSampleRate(), audioFormat.getChannels(), IAudioSamples.Format.FMT_S16, (System.nanoTime() - startTime)/1000);
-                        
-                        writer.encodeAudio(1, smp); 
-					} catch (IOException e) {
-						e.printStackTrace();
-					}
+				String outFileUrl = repo + "pandit"+ readIndex + ".mp4";
+				System.out.println("Writing new file");
+				player.prepareMedia(
+						  "http://192.168.1.109:8080/videofeed",
+						  ":sout=#transcode{vcodec=h264,venc=x264{cfr=16},scale=1,acodec=mp4a,ab=160,channels=2,samplerate=44100}:file{dst="+outFileUrl+"}",
+						  ":no-sout-rtp-sap", 
+						  ":no-sout-standard-sap", 
+						  ":sout-all", 
+						  ":sout-keep"
+						);
+				
+				player.start();
+			    try {
+					Thread.sleep(20000);
+					player.stop();
+				    //mediaPlayer.release();
+				} catch (InterruptedException e) {
+					System.out.println(e.getMessage());
 				}
-				writer.close();
-				System.out.println();
+			    
 				synchronized(StreamServer.class){
 					readIndex ++;
-					if(readIndex - writeIndex > 1)
+					if(readIndex - writeIndex >= 2)
 						StreamServer.class.notify();
 				}
 
 			}
+
 		}
 
 	}

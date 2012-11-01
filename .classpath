@@ -3,9 +3,9 @@
 	<classpathentry kind="src" path="src"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
 	<classpathentry kind="con" path="org.apache.ivyde.eclipse.cpcontainer.IVYDE_CONTAINER/?project=prozone&amp;ivyXmlPath=ivy.xml&amp;confs=*"/>
-	<classpathentry kind="lib" path="C:/Users/omkar/Documents/GitHub/ece6102/lib/xuggle-xuggler-5.4.jar"/>
-	<classpathentry kind="lib" path="C:/Users/omkar/Documents/GitHub/ece6102/lib/jna-3.0.9.jar"/>
-	<classpathentry kind="lib" path="C:/Users/omkar/Documents/GitHub/ece6102/lib/platform-3.4.0.jar"/>
-	<classpathentry kind="lib" path="C:/Users/omkar/Documents/GitHub/ece6102/lib/vlcj-1.2.1.jar"/>
+	<classpathentry kind="lib" path="/home/neer/workspace_newEclipse/jna-3.4.0.jar"/>
+	<classpathentry kind="lib" path="/home/neer/workspace_newEclipse/slf4j-api-1.7.1.jar"/>
+	<classpathentry kind="lib" path="/home/neer/workspace_newEclipse/vlcj-2.1.0.jar"/>
+	<classpathentry kind="lib" path="/home/neer/workspace_newEclipse/xuggle-xuggler-5.4.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
