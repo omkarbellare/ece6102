@@ -1,34 +1,46 @@
 package com.prozone.driver;
 
-import java.io.IOException;
-import java.util.Properties;
+import java.net.Inet4Address;
+import java.net.InetAddress;
+import java.net.NetworkInterface;
+import java.net.SocketException;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Enumeration;
 
-import com.prozone.proxy.StreamingProxyServer;
-import com.prozone.server.StreamingServer;
+import com.prozone.server.StreamServer;
 
 public class ServerDriver {
-	
-	private static Thread serverThread;
 
-	public static void main(String[] args) {
-		
+	public static void main(String[] args){
 		try {
-			Properties prop=new Properties();
-			prop.load(ProxyDriver.class.getResourceAsStream("/config/config.properties"));
-			int proxy_port_num=Integer.parseInt(prop.getProperty("proxy_port"));
-			String proxy_ip=prop.getProperty("heartbeat_interval");
-			int server_port=Integer.parseInt(prop.getProperty("server_port"));
-			StreamingServer server = new StreamingServer(server_port,proxy_ip,proxy_port_num);
-			serverThread=new Thread(server);
-			serverThread.start();
-			serverThread.join();
-		} catch( IOException e ) {
-			System.err.println( "Couldn't start proxy server:\n" + e );
-			System.exit( -1 );
-		} catch (InterruptedException e) {
-			System.err.println( "Couldn't start proxy server interrupted:\n" + e );
+			NetworkInterface network = null;
+			Enumeration<NetworkInterface> nets = NetworkInterface.getNetworkInterfaces();
+			Collection<NetworkInterface> netsCollection = Collections.list(nets);
+			for(NetworkInterface net : netsCollection){
+				if(net.getDisplayName().equals("wlan0")){
+					network = net;
+					break;
+				}
+			}
+			
+			InetAddress inetAddress = null;
+			Enumeration<InetAddress> inets = network.getInetAddresses();
+			while (inets.hasMoreElements()) {
+				inetAddress= (InetAddress) inets.nextElement();
+				if(inetAddress instanceof Inet4Address)
+					break;
+
+			}
+
+			System.out.println(inetAddress.getHostAddress());
+			StreamServer ss = new StreamServer(inetAddress);
+			ss.startServer();
+		} catch (SocketException e) {
+			e.printStackTrace();
+		}
+		catch (Exception e) {
 			e.printStackTrace();
 		}
 	}
-
 }
