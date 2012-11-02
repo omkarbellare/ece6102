@@ -1,14 +1,18 @@
 package com.prozone.server;
 
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.net.DatagramSocket;
 
 import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.SocketException;
+import java.net.URL;
+import java.net.URLConnection;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -140,7 +144,6 @@ public class StreamServer {
 			
 			while(true){
 				
-				System.out.println("Primary Device:"+primaryDevice);
 				if(!primaryDevice.equals("")) {
 					
 					String outFileUrl = repo + "pandit"+ readIndex + ".mp4";
@@ -243,8 +246,20 @@ public class StreamServer {
 		Properties prop=new Properties();
 		prop.load(ProxyDriver.class.getResourceAsStream("/config/config.properties"));
 		int server_port=Integer.parseInt(prop.getProperty("server_port"));
+		String proxy_port=prop.getProperty("proxy_port");
+		String proxy_ip=prop.getProperty("proxy_ip");
 		streamingServer = this.new StreamingServer(server_port);
+		URL connectURL=new URL("http://"+proxy_ip+":"+proxy_port+"/registerServer?ip="+this.inetAddress.getHostAddress());
+		URLConnection conn=connectURL.openConnection();
 		
+		BufferedReader rd=new BufferedReader(new InputStreamReader(conn.getInputStream()));
+		StringBuffer sb=new StringBuffer();
+		String line;
+		while((line=rd.readLine())!=null) {
+			sb.append(line);
+		}
+		rd.close();
+				
 		new Thread(streamReader).start();
 		new Thread(streamWriter).start();
 		new Thread(streamingServer).start();
