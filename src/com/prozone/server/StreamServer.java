@@ -139,8 +139,10 @@ public class StreamServer {
 		public void run() {
 			
 			while(true){
+				
 				System.out.println("Primary Device:"+primaryDevice);
 				if(!primaryDevice.equals("")) {
+					
 					String outFileUrl = repo + "pandit"+ readIndex + ".mp4";
 					System.out.println("Writing new file");
 					player.prepareMedia(
@@ -191,6 +193,8 @@ public class StreamServer {
 					streamingDevicesList.add(parms.get(key));
 				}
 				//If the primary device was deregistered, elect a new primary
+				System.out.println("Primary device:"+primaryDevice);
+				System.out.println("Devices list size:"+streamingDevicesList.size());
 				if(!streamingDevicesList.contains(primaryDevice) || primaryDevice.equals("")) {
 					if(streamingDevicesList.size()>0) {
 						primaryDevice=(String) streamingDevicesList.get(0);
