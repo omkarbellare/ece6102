@@ -46,16 +46,14 @@ public class HeartbeatHandler implements Runnable {
 			HttpPost post=new HttpPost(url.toString());
 			String devicesList="";
 			List<String> devices=StreamingProxyServer.getStreamingDevicesList();
-			if(devices!=null && devices.size()>0) {
-				List<BasicNameValuePair> list=new ArrayList<BasicNameValuePair>();
-				for(int i=0;i<devices.size();i++) {
-					
-					list.add(new BasicNameValuePair(String.valueOf(i),devices.get(i)));
-				}
-				post.setEntity(new UrlEncodedFormEntity(list));
-				httpClient.execute(post);
-				System.out.println("Going to send:"+devicesList);
+			List<BasicNameValuePair> list=new ArrayList<BasicNameValuePair>();
+			for(int i=0;i<devices.size();i++) {
+				
+				list.add(new BasicNameValuePair(String.valueOf(i),devices.get(i)));
 			}
+			post.setEntity(new UrlEncodedFormEntity(list));
+			httpClient.execute(post);
+			System.out.println("Going to send:"+devicesList);
 		} catch (IOException e) {
 			System.out.println("Error in sending state info to the new primary server.");
 		}
@@ -105,6 +103,9 @@ public class HeartbeatHandler implements Runnable {
 								newPrimary=StreamingProxyServer.getStreamingServersList().get(0).toString();
 								StreamingProxyServer.setPrimaryServer(newPrimary);
 								sendDevicesListToPrimary();
+							}
+							else {
+								StreamingProxyServer.setPrimaryServer(newPrimary);
 							}
 							failedCount=0;
 							successCount=0;
