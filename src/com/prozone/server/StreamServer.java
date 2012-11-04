@@ -39,7 +39,14 @@ public class StreamServer {
 	
 	private static List streamingDevicesList;
 	private static String primaryDevice;
+	
+	public static synchronized String getPrimaryDevice() {
+		return primaryDevice;
+	}
 
+	public static synchronized void setPrimaryDevice(String primaryDevice) {
+		StreamServer.primaryDevice = primaryDevice;
+	}
 
 	private String[] mediaOptions = {null,
 			":no-sout-rtp-sap", 
@@ -144,12 +151,13 @@ public class StreamServer {
 			
 			while(true){
 				
-				if(!primaryDevice.equals("")) {
+				System.out.println(getPrimaryDevice());
+				if(!getPrimaryDevice().equals("")) {
 					
 					String outFileUrl = repo + "pandit"+ readIndex + ".mp4";
 					System.out.println("Writing new file");
 					player.prepareMedia(
-							"http://"+primaryDevice+":8080/videofeed",
+							"http://"+getPrimaryDevice()+":8080/videofeed",
 							":sout=#transcode{vcodec=h264,venc=x264{cfr=16},scale=1,acodec=mp4a,ab=160,channels=2,samplerate=44100}:file{dst="+outFileUrl+"}",
 							":no-sout-rtp-sap", 
 							":no-sout-standard-sap", 
@@ -183,9 +191,9 @@ public class StreamServer {
 		public Response serve( String uri, String method, Properties header, Properties parms, Properties files )
 		{
 			if(uri.equals("/heartbeat")) {
-				if(primaryDevice.equals("") && streamingDevicesList!=null && streamingDevicesList.size()>0) {
-					primaryDevice=(String) streamingDevicesList.get(0);
-					System.out.println("New primary device is:"+primaryDevice);
+				if(getPrimaryDevice().equals("") && streamingDevicesList!=null && streamingDevicesList.size()>0) {
+					setPrimaryDevice((String) streamingDevicesList.get(0));
+					System.out.println("New primary device is:"+getPrimaryDevice());
 				}
 				return new NanoHTTPD.Response( HTTP_OK, MIME_PLAINTEXT, "Ok" );
 			}
@@ -196,15 +204,15 @@ public class StreamServer {
 					streamingDevicesList.add(parms.get(key));
 				}
 				//If the primary device was deregistered, elect a new primary
-				System.out.println("Primary device:"+primaryDevice);
+				System.out.println("Primary device:"+getPrimaryDevice());
 				System.out.println("Devices list size:"+streamingDevicesList.size());
-				if(!streamingDevicesList.contains(primaryDevice) || primaryDevice.equals("")) {
+				if(!streamingDevicesList.contains(getPrimaryDevice()) || getPrimaryDevice().equals("")) {
 					if(streamingDevicesList.size()>0) {
-						primaryDevice=(String) streamingDevicesList.get(0);
-						System.out.println("New primary device is:"+primaryDevice);
+						setPrimaryDevice((String) streamingDevicesList.get(0));
+						System.out.println("New primary device is:"+getPrimaryDevice());
 					}
 					else
-						primaryDevice="";
+						setPrimaryDevice("");
 				}
 				return new NanoHTTPD.Response( HTTP_OK, MIME_PLAINTEXT, "Ok" );
 			}
@@ -229,7 +237,7 @@ public class StreamServer {
 	{
 		try {
 			streamingDevicesList=new ArrayList<String>();
-			primaryDevice="";
+			setPrimaryDevice("");
 			this.inetAddress = inetAddress;
 			socket = new DatagramSocket(STREAMIN_PORT, this.inetAddress);
 			socket.setSoTimeout(0); // blocking read
