@@ -110,6 +110,7 @@ public class StreamingProxyServer extends NanoHTTPD implements Runnable
 			}
 		}
 		else if(uri.equals("/deregisterDevice")) {
+			System.out.println("Deregister device request");
 			
 			if(parms.containsKey("ip") && ProxyHelper.isValidIP(parms.get("ip").toString())) {
 				synchronized (streamingDevicesList) {
@@ -122,6 +123,16 @@ public class StreamingProxyServer extends NanoHTTPD implements Runnable
 			}
 			else {
 				return new NanoHTTPD.Response( HTTP_BADREQUEST, MIME_PLAINTEXT, "Bad Request" );
+			}
+		}
+		else if(uri.equals("/stream")) {
+			
+			if(primaryServer.trim().equals("")) {
+				return new NanoHTTPD.Response(HTTP_OK, MIME_HTML, "<html>No Servers Found at the moment.<br>Please refresh this page in some time.</html>");
+			}
+			else {
+				String url="<html><a href='http://"+primaryServer+":5555/demo'>View Live Stream</a></html>";
+				return new NanoHTTPD.Response(HTTP_OK, MIME_HTML, url);
 			}
 		}
 		else {
