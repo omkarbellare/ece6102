@@ -34,7 +34,7 @@ public class StreamServer {
 	private static final int STREAMIN_PORT = 9998;
 	private static final int STREAMOUT_PORT = 5555;
 
-	private String repo = "/home/neer/stream_files/";
+	private String repo = System.getProperty("user.home")+"/stream_files";
 	private int writeIndex  = 0;
 	private int readIndex = 0;
 	
@@ -70,8 +70,9 @@ public class StreamServer {
 		private MediaPlayerFactory factory;
 		private EmbeddedMediaPlayer player;
 		private String[] mediaOptions;
-
+		
 		public StreamWriter(String[] mediaOptions){
+			
 			factory = new MediaPlayerFactory();
 			player = factory.newEmbeddedMediaPlayer();
 			this.mediaOptions = mediaOptions;
@@ -99,7 +100,7 @@ public class StreamServer {
 				}
 
 				for(; i < readIndex;i++){
-					String inFileUrl = repo + "pandit"+ i+ ".mp4";
+					String inFileUrl = repo + "movie"+ i+ ".mp4";
 					System.out.println("Playing movie:"+inFileUrl);
 					
 					player.playMedia(inFileUrl,url,":no-sout-rtp-sap", 
@@ -149,7 +150,7 @@ public class StreamServer {
 				
 				if(!primaryDevice.equals("")) {
 					
-					String outFileUrl = repo + "pandit"+ readIndex + ".mp4";
+					String outFileUrl = repo + "movie"+ readIndex + ".mp4";
 					System.out.println("Writing new file: " + outFileUrl);
 					player.prepareMedia(
 							"http://"+primaryDevice+":8080/videofeed",
