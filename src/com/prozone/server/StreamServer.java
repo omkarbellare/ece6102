@@ -147,6 +147,7 @@ public class StreamServer {
 			int i = 0;
 			
 			while(true){
+				
 				if(!primaryDevice.equals("")) {
 					
 					String outFileUrl = repo + "pandit"+ i + ".mp4";
