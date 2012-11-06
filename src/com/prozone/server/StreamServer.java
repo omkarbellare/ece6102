@@ -144,13 +144,12 @@ public class StreamServer {
 
 		@Override
 		public void run() {
-			int i = 0;
 			
 			while(true){
 				
 				if(!primaryDevice.equals("")) {
 					
-					String outFileUrl = repo + "pandit"+ i + ".mp4";
+					String outFileUrl = repo + "pandit"+ readIndex + ".mp4";
 					System.out.println("Writing new file: " + outFileUrl);
 					player.prepareMedia(
 							"http://"+primaryDevice+":8080/videofeed",
@@ -164,16 +163,15 @@ public class StreamServer {
 					try {
 						Thread.sleep(20000);
 						player.stop();
-						i = (i+1) % 2;
 						//	mediaPlayer.release();
 					} catch (InterruptedException e) {
 						System.out.println(e.getMessage());
 					}
-					/*synchronized(StreamServer.class){
+					synchronized(StreamServer.class){
 						readIndex ++;
-						if(readIndex - writeIndex >= 2)
-							StreamServer.class.notify();
-					}*/
+						/*if(readIndex - writeIndex >= 2)
+							StreamServer.class.notify();*/
+					}
 				}
 			}
 		}

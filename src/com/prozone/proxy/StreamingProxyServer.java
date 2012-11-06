@@ -131,7 +131,7 @@ public class StreamingProxyServer extends NanoHTTPD implements Runnable
 				return new NanoHTTPD.Response(HTTP_OK, MIME_HTML, "<html>No Servers Found at the moment.<br>Please refresh this page in some time.</html>");
 			}
 			else {
-				String url="<html><a href='http://"+primaryServer+":5555/demo'>View Live Stream</a></html>";
+				String url="<html><a href='http://"+primaryServer+"/readme.php'>View Live Stream</a></html>";
 				return new NanoHTTPD.Response(HTTP_OK, MIME_HTML, url);
 			}
 		}
