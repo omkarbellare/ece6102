@@ -24,6 +24,7 @@ import com.prozone.driver.ProxyDriver;
 import com.prozone.http.NanoHTTPD;
 import com.prozone.http.NanoHTTPD.Response;
 
+import uk.co.caprica.vlcj.player.DeinterlaceMode;
 import uk.co.caprica.vlcj.player.MediaPlayerFactory;
 import uk.co.caprica.vlcj.player.embedded.EmbeddedMediaPlayer;
 
@@ -33,12 +34,12 @@ public class StreamServer {
 	private static final int STREAMIN_PORT = 9998;
 	private static final int STREAMOUT_PORT = 5555;
 
-	private String repo = "/home/pranav/stream_files/";
+	private String repo = "/home/neer/stream_files/";
 	private int writeIndex  = 0;
 	private int readIndex = 0;
 	
 	private static List streamingDevicesList;
-	private static String primaryDevice;
+	private static volatile String primaryDevice;
 
 
 	private String[] mediaOptions = {null,
@@ -55,7 +56,9 @@ public class StreamServer {
 	private StreamingServer streamingServer;
 
 	private void constructURL(){
-		url = ":sout=#rtp{sdp=rtsp://@" + this.inetAddress.getHostAddress() + ":" + StreamServer.STREAMOUT_PORT+ "/demo,select=noaudio}";
+//		url = ":sout=#rtp{sdp=rtsp://@192.168.1.113:5555/demo}";
+//		url = ":sout=#rtp{sdp=rtsp://@" + this.inetAddress.getHostAddress() + ":" + StreamServer.STREAMOUT_PORT+ "/demo}";
+		url = ":sout=#duplicate{dst=std{access=http,mux=ts,dst=192.168.1.47:5555}}";
 		System.out.println(url);
 	}
 
@@ -141,13 +144,13 @@ public class StreamServer {
 
 		@Override
 		public void run() {
+			int i = 0;
 			
 			while(true){
-				
 				if(!primaryDevice.equals("")) {
 					
-					String outFileUrl = repo + "pandit"+ readIndex + ".mp4";
-					System.out.println("Writing new file");
+					String outFileUrl = repo + "pandit"+ i + ".mp4";
+					System.out.println("Writing new file: " + outFileUrl);
 					player.prepareMedia(
 							"http://"+primaryDevice+":8080/videofeed",
 							":sout=#transcode{vcodec=h264,venc=x264{cfr=16},scale=1,acodec=mp4a,ab=160,channels=2,samplerate=44100}:file{dst="+outFileUrl+"}",
@@ -160,15 +163,16 @@ public class StreamServer {
 					try {
 						Thread.sleep(20000);
 						player.stop();
+						i = (i+1) % 2;
 						//	mediaPlayer.release();
 					} catch (InterruptedException e) {
 						System.out.println(e.getMessage());
 					}
-					synchronized(StreamServer.class){
+					/*synchronized(StreamServer.class){
 						readIndex ++;
 						if(readIndex - writeIndex >= 2)
 							StreamServer.class.notify();
-					}
+					}*/
 				}
 			}
 		}
@@ -185,7 +189,7 @@ public class StreamServer {
 			if(uri.equals("/heartbeat")) {
 				if(primaryDevice.equals("") && streamingDevicesList!=null && streamingDevicesList.size()>0) {
 					primaryDevice=(String) streamingDevicesList.get(0);
-					System.out.println("New primary device is:"+primaryDevice);
+//					System.out.println("New primary device is:"+primaryDevice);
 				}
 				return new NanoHTTPD.Response( HTTP_OK, MIME_PLAINTEXT, "Ok" );
 			}
@@ -196,8 +200,8 @@ public class StreamServer {
 					streamingDevicesList.add(parms.get(key));
 				}
 				//If the primary device was deregistered, elect a new primary
-				System.out.println("Primary device:"+primaryDevice);
-				System.out.println("Devices list size:"+streamingDevicesList.size());
+//				System.out.println("Primary device:"+primaryDevice);
+//				System.out.println("Devices list size:"+streamingDevicesList.size());
 				if(!streamingDevicesList.contains(primaryDevice) || primaryDevice.equals("")) {
 					if(streamingDevicesList.size()>0) {
 						primaryDevice=(String) streamingDevicesList.get(0);
@@ -261,7 +265,7 @@ public class StreamServer {
 		rd.close();
 				
 		new Thread(streamReader).start();
-		new Thread(streamWriter).start();
+		//new Thread(streamWriter).start();
 		new Thread(streamingServer).start();
 	}
 }

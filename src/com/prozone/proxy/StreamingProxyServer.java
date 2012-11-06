@@ -110,6 +110,7 @@ public class StreamingProxyServer extends NanoHTTPD implements Runnable
 			}
 		}
 		else if(uri.equals("/deregisterDevice")) {
+			System.out.println("Deregister device request");
 			
 			if(parms.containsKey("ip") && ProxyHelper.isValidIP(parms.get("ip").toString())) {
 				synchronized (streamingDevicesList) {
