@@ -38,7 +38,7 @@ public class StreamServer {
 	private static final int STREAMIN_PORT = 9998;
 	private static final int STREAMOUT_PORT = 5555;
 
-	private String repo = System.getProperty("user.home")+"/stream_files";
+	private String repo = System.getProperty("user.home")+"/stream_files/";
 	private int writeIndex  = 0;
 	private int readIndex = 0;
 	
