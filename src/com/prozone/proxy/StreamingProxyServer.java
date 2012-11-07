@@ -72,6 +72,7 @@ public class StreamingProxyServer extends NanoHTTPD implements Runnable
 					}
 				}
 				String msg="Total registered servers="+streamingServersList.size();
+				System.out.println(msg);
 				return new NanoHTTPD.Response( HTTP_OK, MIME_PLAINTEXT, msg );
 			}
 			else {
@@ -103,6 +104,7 @@ public class StreamingProxyServer extends NanoHTTPD implements Runnable
 						streamingDevicesList.add(parms.get("ip").toString());
 				}
 				String msg="Total registered devices="+streamingDevicesList.size();
+				System.out.println(msg);
 				return new NanoHTTPD.Response( HTTP_OK, MIME_PLAINTEXT, msg );
 			}
 			else {
@@ -131,6 +133,7 @@ public class StreamingProxyServer extends NanoHTTPD implements Runnable
 				return new NanoHTTPD.Response(HTTP_OK, MIME_HTML, "<html>No Servers Found at the moment.<br>Please refresh this page in some time.</html>");
 			}
 			else {
+				System.out.println("Stream request received");
 				String url="<html><a href='http://"+primaryServer+"/readme.php'>View Live Stream</a></html>";
 				return new NanoHTTPD.Response(HTTP_OK, MIME_HTML, url);
 			}
