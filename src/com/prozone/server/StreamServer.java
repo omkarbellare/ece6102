@@ -9,6 +9,7 @@ import java.net.DatagramSocket;
 
 import java.net.Inet4Address;
 import java.net.InetAddress;
+import java.net.MalformedURLException;
 import java.net.NetworkInterface;
 import java.net.SocketException;
 import java.net.URL;
@@ -19,6 +20,8 @@ import java.util.Collections;
 import java.util.Enumeration;
 import java.util.List;
 import java.util.Properties;
+
+import org.apache.commons.io.FileUtils;
 
 import com.prozone.driver.ProxyDriver;
 import com.prozone.http.NanoHTTPD;
@@ -44,6 +47,8 @@ public class StreamServer {
 	
 	private static List streamingDevicesList;
 	private static volatile String primaryDevice;
+	private static volatile String proxy_ip;
+	private static volatile String  proxy_port;
 
 
 	private String[] mediaOptions = {null,
@@ -141,6 +146,7 @@ public class StreamServer {
 
 		private MediaPlayerFactory factory;
 		private EmbeddedMediaPlayer player;
+		private boolean primaryDeviceDown = false;
 
 		public StreamReader(){
 			factory = new MediaPlayerFactory();
@@ -293,7 +299,45 @@ public class StreamServer {
 				
 				@Override
 				public void error(MediaPlayer arg0) {
+					arg0.stop();
 					System.out.println("error");
+					primaryDeviceDown = true;
+					
+					URL connectURL;
+					try {
+						
+						if(!proxy_ip.equals("")){
+						connectURL = new URL("http://"+proxy_ip+":8082/deregisterDevice?ip=" + primaryDevice);
+						URLConnection conn = connectURL.openConnection();
+						// Get the response
+						BufferedReader rd = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+						StringBuffer sb = new StringBuffer();
+						String line;
+						while ((line = rd.readLine()) != null)
+						{
+							sb.append(line);
+						}
+						rd.close();
+						String result = sb.toString();
+						}
+					} catch (MalformedURLException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					} catch (IOException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+					primaryDevice = "";
+					
+					try {
+						synchronized(StreamServer.class){
+							FileUtils.copyFile(new File(repo + "movie"+ (readIndex-2) + ".mp4"), new File(repo + "movie"+ (readIndex-1) + ".mp4"));
+							//FileUtils.copyFile(new File(repo + "movie"+ (readIndex-1) + ".mp4"), new File(repo + "movie"+ readIndex + ".mp4"));
+						}
+					} catch (IOException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
 					
 				}
 				
@@ -425,8 +469,8 @@ public class StreamServer {
 		Properties prop=new Properties();
 		prop.load(ProxyDriver.class.getResourceAsStream("/config/config.properties"));
 		int server_port=Integer.parseInt(prop.getProperty("server_port"));
-		String proxy_port=prop.getProperty("proxy_port");
-		String proxy_ip=prop.getProperty("proxy_ip");
+		proxy_port=prop.getProperty("proxy_port");
+		proxy_ip=prop.getProperty("proxy_ip");
 		streamingServer = this.new StreamingServer(server_port);
 		URL connectURL=new URL("http://"+proxy_ip+":"+proxy_port+"/registerServer?ip="+this.inetAddress.getHostAddress());
 		URLConnection conn=connectURL.openConnection();

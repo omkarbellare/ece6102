@@ -134,7 +134,7 @@ public class StreamingProxyServer extends NanoHTTPD implements Runnable
 			}
 			else {
 				System.out.println("Stream request received");
-				String url="<html><a href='http://"+primaryServer+"/readme.php'>View Live Stream</a></html>";
+				String url="<html><a href='http://"+primaryServer+"/GTLive.php'>View Live Stream</a></html>";
 				return new NanoHTTPD.Response(HTTP_OK, MIME_HTML, url);
 			}
 		}
