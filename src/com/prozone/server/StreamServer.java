@@ -94,7 +94,7 @@ public class StreamServer {
 					try {
 						URL url = new URL("http://" + proxy + ":"
 								+ proxy_port
-								+ "/registerDevice?ip=" + server.toString());
+								+ "/registerServer?ip=" + server.toString());
 						try {
 							conn = (HttpURLConnection) url.openConnection();
 							conn.setRequestMethod("GET");
