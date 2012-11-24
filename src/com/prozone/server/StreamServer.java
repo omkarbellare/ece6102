@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.DatagramSocket;
 
+import java.net.HttpURLConnection;
 import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.MalformedURLException;
@@ -15,17 +16,22 @@ import java.net.SocketException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Calendar;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Enumeration;
 import java.util.List;
 import java.util.Properties;
+import java.util.Timer;
+import java.util.TimerTask;
 
 import org.apache.commons.io.FileUtils;
 
 import com.prozone.driver.ProxyDriver;
 import com.prozone.http.NanoHTTPD;
 import com.prozone.http.NanoHTTPD.Response;
+import com.prozone.proxy.StreamingProxyServer;
 
 import uk.co.caprica.vlcj.binding.internal.libvlc_media_t;
 import uk.co.caprica.vlcj.player.DeinterlaceMode;
@@ -46,10 +52,12 @@ public class StreamServer {
 	private int readIndex = 0;
 	
 	private static List streamingDevicesList;
+	private static List streamingServersList;
+	private static List<String> proxyList;
 	private static volatile String primaryDevice;
 	private static volatile String proxy_ip;
 	private static volatile String  proxy_port;
-
+	private static volatile long lastHeartbeatTime = 0;
 
 	private String[] mediaOptions = {null,
 			":no-sout-rtp-sap", 
@@ -70,7 +78,81 @@ public class StreamServer {
 		url = ":sout=#duplicate{dst=std{access=http,mux=ts,dst=192.168.1.47:5555}}";
 		System.out.println(url);
 	}
-
+	
+	private void switchToNewProxy() {
+		
+		// First we need to find a working alternate proxy server
+		for (String proxy : proxyList) {
+			if (!proxy.equals(proxy_ip)) {
+				// Register the servers and devices currently under this proxy to the new
+				// proxy
+				boolean allComponentsRegistered = true;
+				HttpURLConnection conn;
+				
+				for (Object server : streamingServersList) {
+					System.out.println("Sending "+server.toString());
+					try {
+						URL url = new URL("http://" + proxy + ":"
+								+ proxy_port
+								+ "/registerDevice?ip=" + server.toString());
+						try {
+							conn = (HttpURLConnection) url.openConnection();
+							conn.setRequestMethod("GET");
+							BufferedReader in = new BufferedReader(
+									new InputStreamReader(conn.getInputStream()));
+							String response = in.readLine();
+							if (!response.equals("Ok")) {
+								allComponentsRegistered = false;
+								break;
+							}
+						} catch (IOException e) {
+							System.out
+									.println("Could not connect with proxy : "
+											+ proxy);
+							allComponentsRegistered = false;
+							break;
+						}
+					} catch (MalformedURLException e) {
+						System.out.println("Malformed URL");
+						e.printStackTrace();
+					}
+				}
+				if(allComponentsRegistered)
+				for (Object device : streamingDevicesList) {
+					System.out.println("Sending "+device.toString());
+					try {
+						URL url = new URL("http://" + proxy + ":"
+								+ proxy_port
+								+ "/registerDevice?ip=" + device.toString());
+						try {
+							conn = (HttpURLConnection) url.openConnection();
+							conn.setRequestMethod("GET");
+							BufferedReader in = new BufferedReader(
+									new InputStreamReader(conn.getInputStream()));
+							String response = in.readLine();
+							if (!response.equals("Ok")) {
+								allComponentsRegistered = false;
+								break;
+							}
+						} catch (IOException e) {
+							System.out
+									.println("Could not connect with proxy : "
+											+ proxy);
+							allComponentsRegistered = false;
+							break;
+						}
+					} catch (MalformedURLException e) {
+						System.out.println("Malformed URL");
+						e.printStackTrace();
+					}
+				}
+				if (allComponentsRegistered) {
+					break;
+				}
+			}
+		}
+	}
+	
 	/*
 	 * Writing RTSP Streams for VLC Audience
 	 */
@@ -397,18 +479,47 @@ public class StreamServer {
 		}
 	}
 	
+	public class HeartbeatMonitor extends TimerTask {
+
+		int durationInSeconds;
+		
+		public HeartbeatMonitor(int durationInSeconds) {
+			this.durationInSeconds=durationInSeconds;
+			
+		}
+		public void run() {
+			//Only the primary server needs to do this
+			if(lastHeartbeatTime!=0) {
+				System.out.println("Checking for heartbeat...");
+				if(Calendar.getInstance().getTimeInMillis()-lastHeartbeatTime>durationInSeconds*1000) {
+					switchToNewProxy();
+					//If this transfer was successful, then we mark this server as non-primary
+					//by setting lastHeartbeatTime=0.
+					lastHeartbeatTime=0;
+				}
+			}
+		}
+	}
+	
 	public class StreamingServer extends NanoHTTPD implements Runnable {
+		
 		
 		public StreamingServer(int port) throws IOException {
 			super(port, new File("."));
+			Properties prop=new Properties();
+			prop.load(ProxyDriver.class.getResourceAsStream("/config/config.properties"));
+			int heartbeat_interval=Integer.parseInt(prop.getProperty("heartbeat_interval"));
+			Timer t=new Timer();
+			HeartbeatMonitor hbm=new HeartbeatMonitor(10);
+			t.scheduleAtFixedRate(hbm, 0, heartbeat_interval*1000);
 		}
 
 		public Response serve( String uri, String method, Properties header, Properties parms, Properties files )
 		{
 			if(uri.equals("/heartbeat")) {
+				lastHeartbeatTime=Calendar.getInstance().getTimeInMillis();
 				if(primaryDevice.equals("") && streamingDevicesList!=null && streamingDevicesList.size()>0) {
 					primaryDevice=(String) streamingDevicesList.get(0);
-//					System.out.println("New primary device is:"+primaryDevice);
 				}
 				return new NanoHTTPD.Response( HTTP_OK, MIME_PLAINTEXT, "Ok" );
 			}
@@ -419,8 +530,6 @@ public class StreamServer {
 					streamingDevicesList.add(parms.get(key));
 				}
 				//If the primary device was deregistered, elect a new primary
-//				System.out.println("Primary device:"+primaryDevice);
-//				System.out.println("Devices list size:"+streamingDevicesList.size());
 				if(!streamingDevicesList.contains(primaryDevice) || primaryDevice.equals("")) {
 					if(streamingDevicesList.size()>0) {
 						primaryDevice=(String) streamingDevicesList.get(0);
@@ -428,6 +537,16 @@ public class StreamServer {
 					}
 					else
 						primaryDevice="";
+				}
+				return new NanoHTTPD.Response( HTTP_OK, MIME_PLAINTEXT, "Ok" );
+			}
+			else if(uri.equals("/serverList")) {
+				
+				System.out.println("Received servers list");
+				streamingServersList.clear();
+				for(Object key:parms.keySet()) {
+					streamingServersList.add(parms.get(key));
+					System.out.println(parms.get(key).toString());
 				}
 				return new NanoHTTPD.Response( HTTP_OK, MIME_PLAINTEXT, "Ok" );
 			}
@@ -452,6 +571,7 @@ public class StreamServer {
 	{
 		try {
 			streamingDevicesList=new ArrayList<String>();
+			streamingServersList=new ArrayList<String>();
 			primaryDevice="";
 			this.inetAddress = inetAddress;
 			socket = new DatagramSocket(STREAMIN_PORT, this.inetAddress);
@@ -470,7 +590,10 @@ public class StreamServer {
 		prop.load(ProxyDriver.class.getResourceAsStream("/config/config.properties"));
 		int server_port=Integer.parseInt(prop.getProperty("server_port"));
 		proxy_port=prop.getProperty("proxy_port");
-		proxy_ip=prop.getProperty("proxy_ip");
+		String listProxies[]=prop.getProperty("proxy_ips").split(",");
+		proxyList=Arrays.asList(listProxies);
+		//TODO: Make this Random
+		proxy_ip=proxyList.get(0);
 		streamingServer = this.new StreamingServer(server_port);
 		URL connectURL=new URL("http://"+proxy_ip+":"+proxy_port+"/registerServer?ip="+this.inetAddress.getHostAddress());
 		URLConnection conn=connectURL.openConnection();
