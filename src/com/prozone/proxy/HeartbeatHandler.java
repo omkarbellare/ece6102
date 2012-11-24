@@ -8,6 +8,7 @@ import java.io.OutputStreamWriter;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.net.URLConnection;
 import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.List;
@@ -41,10 +42,10 @@ public class HeartbeatHandler implements Runnable {
 		
 		try {
 			
-			DefaultHttpClient httpClient=new DefaultHttpClient();
+			DefaultHttpClient httpClient1=new DefaultHttpClient();
+			//Send the list of devices
 			URL url=new URL("http://"+StreamingProxyServer.getPrimaryServer()+":"+server_port+"/deviceList");
 			HttpPost post=new HttpPost(url.toString());
-			String devicesList="";
 			List<String> devices=StreamingProxyServer.getStreamingDevicesList();
 			List<BasicNameValuePair> list=new ArrayList<BasicNameValuePair>();
 			for(int i=0;i<devices.size();i++) {
@@ -52,10 +53,65 @@ public class HeartbeatHandler implements Runnable {
 				list.add(new BasicNameValuePair(String.valueOf(i),devices.get(i)));
 			}
 			post.setEntity(new UrlEncodedFormEntity(list));
-			httpClient.execute(post);
-			System.out.println("Going to send:"+devicesList);
+			httpClient1.execute(post);
+						
+			DefaultHttpClient httpClient2=new DefaultHttpClient();
+			//Also send the list of servers
+			url=new URL("http://"+StreamingProxyServer.getPrimaryServer()+":"+server_port+"/serverList");
+			post=new HttpPost(url.toString());
+			List<String> servers=StreamingProxyServer.getStreamingServersList();
+			list.clear();
+			for(int i=0;i<servers.size();i++) {
+				
+				list.add(new BasicNameValuePair(String.valueOf(i),servers.get(i)));
+			}
+			post.setEntity(new UrlEncodedFormEntity(list));
+			httpClient2.execute(post);
 		} catch (IOException e) {
 			System.out.println("Error in sending state info to the new primary server.");
+		}
+	}
+	
+	private void sendDevicesListToNextProxy() {
+		
+		//First we need to find a working alternate proxy server
+		List<String> proxyList=StreamingProxyServer.getProxyList();
+		for(String proxy:proxyList) {
+			if(!proxy.equals(StreamingProxyServer.getOwnIP())) {
+				//Register the devices currently under this proxy to the new proxy
+				boolean allDevicesRegistered=true;
+				HttpURLConnection conn;
+				System.out.println("Going to send devices list to "+proxy);
+				for(Object device:StreamingProxyServer.getStreamingDevicesList()) {
+					
+					try {
+						URL url=new URL("http://"+proxy+":"+StreamingProxyServer.getPort()+"/registerDevice?ip="+device.toString());
+						try {
+							conn=(HttpURLConnection)url.openConnection();
+							conn.setRequestMethod("GET");
+							BufferedReader in=new BufferedReader(new InputStreamReader(conn.getInputStream()));
+							String response=in.readLine();
+							if(!response.equals("Ok")) {
+								allDevicesRegistered=false;
+								break;
+							}
+						} catch (IOException e) {
+							System.out.println("Could not connect with proxy : "+proxy);
+							allDevicesRegistered=false;
+							break;
+						}
+					}
+					catch(MalformedURLException e) {
+						System.out.println("Malformed URL");
+						e.printStackTrace();
+					}
+				}
+				if(allDevicesRegistered) {
+					//Clear own streamingDevicesList
+					StreamingProxyServer.getStreamingDevicesList().clear();
+					break;
+				}
+			}
 		}
 	}
 	
@@ -105,12 +161,21 @@ public class HeartbeatHandler implements Runnable {
 								sendDevicesListToPrimary();
 							}
 							else {
-								StreamingProxyServer.setPrimaryServer(newPrimary);
+								//This means that no servers are left under this proxy server
+								//In this case, we need to send any devices under this proxy
+								//to a different proxy.
+								StreamingProxyServer.setPrimaryServer("");
+								if(StreamingProxyServer.getStreamingDevicesList()!=null && StreamingProxyServer.getStreamingDevicesList().size()>0)
+									sendDevicesListToNextProxy();
 							}
 							failedCount=0;
 							successCount=0;
 						}
 					}
+				}
+				else {
+					if(StreamingProxyServer.getStreamingDevicesList()!=null && StreamingProxyServer.getStreamingDevicesList().size()>0)
+						sendDevicesListToNextProxy();
 				}
 				Thread.sleep(interval*1000);
 			}

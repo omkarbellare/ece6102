@@ -17,15 +17,20 @@ public class StreamingProxyServer extends NanoHTTPD implements Runnable
 {
 	private static List streamingServersList;
 	private static List streamingDevicesList;
-	private static String primaryServer; 
-	
-	public StreamingProxyServer(int port) throws IOException
+	private static String primaryServer;
+	private static List<String> proxyList;
+	private static String ownIP;
+	private static int port;
+		
+	public StreamingProxyServer(String ownIP,List<String> proxyList,int port) throws IOException
 	{
-		//Start the server on port 8080
 		super(port, new File("."));
+		this.port=port;
 		streamingServersList=new ArrayList<String>();
 		streamingDevicesList=new ArrayList<String>();
 		primaryServer="";
+		this.proxyList=new ArrayList<String>(proxyList);
+		this.ownIP=ownIP;
 	}
 	
 	static synchronized List getStreamingServersList() {
@@ -52,6 +57,30 @@ public class StreamingProxyServer extends NanoHTTPD implements Runnable
 		StreamingProxyServer.primaryServer = primaryServer;
 	}
 	
+	static synchronized List<String> getProxyList() {
+		return proxyList;
+	}
+
+	static synchronized void setProxyList(List<String> proxyList) {
+		StreamingProxyServer.proxyList = proxyList;
+	}
+
+	static synchronized String getOwnIP() {
+		return ownIP;
+	}
+
+	static synchronized void setOwnIP(String ownIP) {
+		StreamingProxyServer.ownIP = ownIP;
+	}
+	
+	static synchronized int getPort() {
+		return port;
+	}
+
+	static synchronized void setPort(int port) {
+		StreamingProxyServer.port = port;
+	}
+
 	public Response serve( String uri, String method, Properties header, Properties parms, Properties files )
 	{
 		if(uri.equals("/registerServer")) {
@@ -137,6 +166,9 @@ public class StreamingProxyServer extends NanoHTTPD implements Runnable
 				resp.addHeader("Location", "http://"+primaryServer+"/GTLive.php");
 				return resp;
 			}
+		}
+		else if(uri.equals("/isAlive")) {
+			return new NanoHTTPD.Response( HTTP_OK, MIME_PLAINTEXT, "Alive" );
 		}
 		else {
 			return new NanoHTTPD.Response( HTTP_BADREQUEST, MIME_PLAINTEXT, "Bad Request" );
