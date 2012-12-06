@@ -90,7 +90,7 @@ public class StreamServer {
 				HttpURLConnection conn;
 				
 				for (Object server : streamingServersList) {
-					System.out.println("Sending "+server.toString());
+					System.out.println("Sending server list "+server.toString());
 					try {
 						URL url = new URL("http://" + proxy + ":"
 								+ proxy_port
@@ -117,9 +117,9 @@ public class StreamServer {
 						e.printStackTrace();
 					}
 				}
-				if(allComponentsRegistered)
+				//if(allComponentsRegistered)
 				for (Object device : streamingDevicesList) {
-					System.out.println("Sending "+device.toString());
+					System.out.println("Sending devices list "+device.toString());
 					try {
 						URL url = new URL("http://" + proxy + ":"
 								+ proxy_port
